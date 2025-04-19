@@ -9,7 +9,7 @@ import java.net.InetSocketAddress;
 public class HttpServerGame {
 
     public static void main(String[] args) throws IOException {
-        int port = Integer.parseInt(System.getenv().getOrDefault("PORT", "5000"));
+        int port = Integer.parseInt(System.getenv().getOrDefault("PORT", "8080"));
 
         HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
         server.createContext("/", new RootHandler());
