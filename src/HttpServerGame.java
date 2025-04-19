@@ -13,7 +13,6 @@ public class HttpServerGame {
 
         HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
         server.createContext("/", new RootHandler());
-        server.createContext("/start", new StartHandler());
         server.setExecutor(null);
         server.start();
         System.out.println("HTTP server started on port " + port);
@@ -23,24 +22,7 @@ public class HttpServerGame {
 
         @Override
         public void handle(HttpExchange exchange) throws IOException {
-            String response = "🟢 Java Game Server is running!";
-            exchange.sendResponseHeaders(200, response.length());
-            try (OutputStream os = exchange.getResponseBody()) {
-                os.write(response.getBytes());
-            }
-        }
-    }
-
-    static class StartHandler implements HttpHandler {
-
-        @Override
-        public void handle(HttpExchange exchange) throws IOException {
-            if (!exchange.getRequestMethod().equalsIgnoreCase("POST")) {
-                exchange.sendResponseHeaders(405, -1);
-                return;
-            }
-
-            String response = "✅ Game started (this is where game logic will go)";
+            String response = "✅ Java HTTP Game Server is running!";
             exchange.sendResponseHeaders(200, response.length());
             try (OutputStream os = exchange.getResponseBody()) {
                 os.write(response.getBytes());
