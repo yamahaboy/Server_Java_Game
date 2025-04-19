@@ -1,0 +1,9 @@
+services:
+    - type: web
+      name: java-tcp-game
+      env: docker
+      plan: free
+      repo: https://github.com/yourusername/your-repo
+      branch: main
+      dockerfilePath: ./Dockerfile
+      autoDeploy: true
