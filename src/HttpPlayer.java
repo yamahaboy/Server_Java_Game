@@ -18,17 +18,20 @@ public class HttpPlayer extends Player {
 
     @Override
     public int guessNumber(int[] options) {
+        session.sendTo(playerId, "\n");
+
         session.sendTo(playerId, getName() + ", it's your turn to guess!\n");
         session.sendTo(playerId, "Here are the numbers to choose from:\n");
-        System.out.println("[" + getName() + "] options = " + java.util.Arrays.toString(options));
 
-        System.out.println("[SERVER] options = " + options);
+        System.out.println("[" + getName() + "] options = " + java.util.Arrays.toString(options));
 
         for (int i = 0; i < options.length; i++) {
             session.sendTo(playerId, (i + 1) + ". " + options[i] + "\n");
         }
 
         session.sendTo(playerId, "Enter your choice (1, 2 or 3):\n");
+        session.sendTo(playerId, "\n");
+
         return options[readInt() - 1];
     }
 

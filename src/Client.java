@@ -74,9 +74,13 @@ public class Client {
     }
 
     private static String readResponse(HttpURLConnection conn) throws IOException {
-        try (InputStream is = conn.getInputStream()) {
-            return new String(is.readAllBytes());
+        BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+        StringBuilder response = new StringBuilder();
+        String line;
+        while ((line = in.readLine()) != null) {
+            response.append(line).append("\n");
         }
+        return response.toString();
     }
 
     private static void safeSleep(long millis) {
