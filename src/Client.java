@@ -2,15 +2,14 @@
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URI;
-import java.net.URL;
 import java.util.Scanner;
 
 public class Client {
 
     private static final String BASE_URL = "https://java-tcp-game-production.up.railway.app";
 
-    @SuppressWarnings("resource")
     public static void main(String[] args) throws IOException {
+        @SuppressWarnings("resource")
         Scanner scanner = new Scanner(System.in);
 
         System.out.println("Choose:");
@@ -19,14 +18,23 @@ public class Client {
         System.out.print("> ");
         int action = Integer.parseInt(scanner.nextLine());
 
+        String[] data;
         if (action == 1) {
-            System.out.println(post("/create", ""));
+            data = post("/create", "").split(",");
         } else {
-            System.out.println(post("/join", ""));
+            data = post("/join", "").split(",");
         }
 
+        if (data.length < 2) {
+            System.out.println("Failed to start/join game");
+            return;
+        }
+
+        String sessionId = data[0];
+        String playerId = data[1];
+
         while (true) {
-            String response = get("/next");
+            String response = get("/next?sessionId=" + sessionId + "&playerId=" + playerId);
 
             if (response.trim().isEmpty()) {
                 safeSleep(1000);
@@ -36,40 +44,34 @@ public class Client {
             System.out.print(response);
 
             if (response.contains("input") || response.contains("choose")
-                    || response.contains("Enter your choice")
-                    || response.contains("One more time?")
+                    || response.contains("Enter your choice") || response.contains("One more time?")
                     || response.contains("Who will start?")) {
-
                 System.out.print("> ");
                 String userInput = scanner.nextLine();
-                post("/answer", userInput);
+                post("/answer?sessionId=" + sessionId + "&playerId=" + playerId, userInput);
             }
         }
     }
 
     private static String post(String path, String body) throws IOException {
         URI uri = URI.create(BASE_URL + path);
-        URL url = uri.toURL();
-        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        HttpURLConnection conn = (HttpURLConnection) uri.toURL().openConnection();
         conn.setRequestMethod("POST");
         conn.setDoOutput(true);
         try (OutputStream os = conn.getOutputStream()) {
             os.write(body.getBytes());
         }
-        BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-        StringBuilder response = new StringBuilder();
-        String line;
-        while ((line = in.readLine()) != null) {
-            response.append(line).append("\n");
-        }
-        return response.toString();
+        return readResponse(conn);
     }
 
     private static String get(String path) throws IOException {
         URI uri = URI.create(BASE_URL + path);
-        URL url = uri.toURL();
-        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        HttpURLConnection conn = (HttpURLConnection) uri.toURL().openConnection();
         conn.setRequestMethod("GET");
+        return readResponse(conn);
+    }
+
+    private static String readResponse(HttpURLConnection conn) throws IOException {
         BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
         StringBuilder response = new StringBuilder();
         String line;

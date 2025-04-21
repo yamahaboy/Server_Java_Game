@@ -2,18 +2,18 @@
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
-import java.io.IOException;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.concurrent.Executors;
 
 public class HttpServerGame {
 
-    private static final List<Session> sessions = new ArrayList<>();
+    private static final Map<String, Session> sessions = new HashMap<>();
+    private static int sessionCounter = 1;
 
     public static void main(String[] args) throws IOException {
-        int port = Integer.parseInt(System.getenv("PORT"));
+        int port = Integer.parseInt(System.getenv().getOrDefault("PORT", "8080"));
 
         HttpServer server = HttpServer.create(new InetSocketAddress("0.0.0.0", port), 0);
         server.createContext("/create", new CreateHandler());
@@ -28,26 +28,38 @@ public class HttpServerGame {
 
     static class Session {
 
-        Queue<String> messages = new LinkedList<>();
-        final Map<Integer, Queue<String>> playerAnswers = new HashMap<>();
+        String sessionId;
         boolean full = false;
+        Map<String, Queue<String>> playerMessages = new HashMap<>();
+        Map<String, Queue<String>> playerAnswers = new HashMap<>();
+        List<String> players = new ArrayList<>();
 
-        void sendToAll(String msg) {
-            messages.add(msg);
+        Session(String id) {
+            this.sessionId = id;
         }
 
-        void addAnswer(int playerIndex, String msg) {
-            playerAnswers.computeIfAbsent(playerIndex, k -> new LinkedList<>()).add(msg);
+        void addPlayer(String playerId) {
+            players.add(playerId);
+            playerMessages.put(playerId, new LinkedList<>());
+            playerAnswers.put(playerId, new LinkedList<>());
         }
 
-        String awaitAnswer(int playerIndex) {
-            while (playerAnswers.getOrDefault(playerIndex, new LinkedList<>()).isEmpty()) {
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException ignored) {
-                }
+        void sendTo(String playerId, String message) {
+            playerMessages.get(playerId).add(message);
+        }
+
+        void sendToAll(String message) {
+            for (String playerId : players) {
+                sendTo(playerId, message);
             }
-            return playerAnswers.get(playerIndex).poll();
+        }
+
+        void addAnswer(String playerId, String answer) {
+            playerAnswers.get(playerId).add(answer);
+        }
+
+        String pollMessage(String playerId) {
+            return playerMessages.get(playerId).poll();
         }
     }
 
@@ -55,10 +67,16 @@ public class HttpServerGame {
 
         @Override
         public void handle(HttpExchange exchange) throws IOException {
-            Session session = new Session();
-            sessions.add(session);
-            session.messages.add("Game created\nWaiting for second player...\n");
-            respond(exchange, "Game created");
+            String sessionId = "S" + (sessionCounter++);
+            String playerId = UUID.randomUUID().toString();
+
+            Session session = new Session(sessionId);
+            session.addPlayer(playerId);
+            session.sendTo(playerId, "Game created\nWaiting for second player...\n\n");
+
+            sessions.put(sessionId, session);
+
+            respond(exchange, sessionId + "," + playerId);
         }
     }
 
@@ -66,12 +84,13 @@ public class HttpServerGame {
 
         @Override
         public void handle(HttpExchange exchange) throws IOException {
-            for (Session session : sessions) {
-                if (!session.full) {
+            for (Session session : sessions.values()) {
+                if (!session.full && session.players.size() == 1) {
+                    String playerId = UUID.randomUUID().toString();
+                    session.addPlayer(playerId);
                     session.full = true;
-                    session.sendToAll("Both players connected!\n");
-                    session.sendToAll("Who will start? (1 or 2):\n");
-                    respond(exchange, "Joined game");
+                    session.sendToAll("Both players connected!\nWho will start? (1 or 2):\n\n");
+                    respond(exchange, session.sessionId + "," + playerId);
                     return;
                 }
             }
@@ -83,13 +102,17 @@ public class HttpServerGame {
 
         @Override
         public void handle(HttpExchange exchange) throws IOException {
-            for (Session session : sessions) {
-                if (!session.messages.isEmpty()) {
-                    respond(exchange, session.messages.poll());
-                    return;
-                }
+            Map<String, String> query = parseQuery(exchange);
+            String sessionId = query.get("sessionId");
+            String playerId = query.get("playerId");
+
+            Session session = sessions.get(sessionId);
+            if (session != null) {
+                String msg = session.pollMessage(playerId);
+                respond(exchange, msg == null ? "" : msg);
+            } else {
+                respond(exchange, "");
             }
-            respond(exchange, "");
         }
     }
 
@@ -97,25 +120,37 @@ public class HttpServerGame {
 
         @Override
         public void handle(HttpExchange exchange) throws IOException {
-            Scanner scanner = new Scanner(exchange.getRequestBody()).useDelimiter("\\A");
-            String input = scanner.hasNext() ? scanner.next() : "";
-
-            for (Session session : sessions) {
-                if (session.full) {
-                    // Временное предположение — всегда отвечает игрок 1
-                    session.addAnswer(1, input);
-                    session.sendToAll("You wrote: " + input + "\n");
-                    break;
-                }
+            Map<String, String> query = parseQuery(exchange);
+            String sessionId = query.get("sessionId");
+            String playerId = query.get("playerId");
+            String input;
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(exchange.getRequestBody()))) {
+                input = reader.readLine();
+            }
+            Session session = sessions.get(sessionId);
+            if (session != null) {
+                session.addAnswer(playerId, input);
+                session.sendToAll("You wrote: " + input + "\n\n");
             }
             respond(exchange, "OK");
         }
     }
 
     private static void respond(HttpExchange exchange, String response) throws IOException {
-        exchange.sendResponseHeaders(200, response.getBytes().length);
+        byte[] bytes = response.getBytes();
+        exchange.sendResponseHeaders(200, bytes.length);
         try (OutputStream os = exchange.getResponseBody()) {
-            os.write(response.getBytes());
+            os.write(bytes);
         }
+    }
+
+    private static Map<String, String> parseQuery(HttpExchange exchange) {
+        String[] parts = exchange.getRequestURI().getQuery().split("&");
+        Map<String, String> map = new HashMap<>();
+        for (String part : parts) {
+            String[] kv = part.split("=");
+            map.put(kv[0], kv[1]);
+        }
+        return map;
     }
 }
