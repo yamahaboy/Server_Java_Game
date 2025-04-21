@@ -134,7 +134,6 @@ public class HttpServerGame {
                 session.addAnswer(playerId, input);
                 session.sendToAll("You wrote: " + input + "\n\n");
             }
-
             respond(exchange, "OK");
         }
     }

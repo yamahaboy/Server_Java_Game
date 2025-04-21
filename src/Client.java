@@ -1,7 +1,9 @@
 
 import java.io.*;
 import java.net.HttpURLConnection;
-import java.net.URI;
+import java.net.URL;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Scanner;
 
 public class Client {
@@ -34,7 +36,7 @@ public class Client {
         String playerId = data[1];
 
         while (true) {
-            String response = get("/next?sessionId=" + sessionId + "&playerId=" + playerId);
+            String response = get("/next?sessionId=" + encode(sessionId) + "&playerId=" + encode(playerId));
 
             if (response.trim().isEmpty()) {
                 safeSleep(1000);
@@ -48,14 +50,14 @@ public class Client {
                     || response.contains("Who will start?")) {
                 System.out.print("> ");
                 String userInput = scanner.nextLine();
-                post("/answer?sessionId=" + sessionId + "&playerId=" + playerId, userInput);
+                post("/answer?sessionId=" + encode(sessionId) + "&playerId=" + encode(playerId), userInput);
             }
         }
     }
 
     private static String post(String path, String body) throws IOException {
-        URI uri = URI.create(BASE_URL + path);
-        HttpURLConnection conn = (HttpURLConnection) uri.toURL().openConnection();
+        URL url = new URL(BASE_URL + path);
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("POST");
         conn.setDoOutput(true);
         try (OutputStream os = conn.getOutputStream()) {
@@ -65,8 +67,8 @@ public class Client {
     }
 
     private static String get(String path) throws IOException {
-        URI uri = URI.create(BASE_URL + path);
-        HttpURLConnection conn = (HttpURLConnection) uri.toURL().openConnection();
+        URL url = new URL(BASE_URL + path);
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("GET");
         return readResponse(conn);
     }
@@ -87,5 +89,9 @@ public class Client {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
+    }
+
+    private static String encode(String value) {
+        return URLEncoder.encode(value, StandardCharsets.UTF_8);
     }
 }
