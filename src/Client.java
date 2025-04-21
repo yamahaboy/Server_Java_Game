@@ -32,10 +32,8 @@ public class Client {
             return;
         }
 
-        String sessionId = data[0];
-        String playerId = data[1];
-        sessionId = sessionId.trim();
-        playerId = playerId.trim();
+        String sessionId = data[0].trim();
+        String playerId = data[1].trim();
 
         while (true) {
             String response = get("/next?sessionId=" + encode(sessionId) + "&playerId=" + encode(playerId));

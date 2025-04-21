@@ -48,14 +48,18 @@ public class HttpServerGame {
             playerMessages.get(playerId).add(message);
         }
 
-        void sendToAll(String message) {
-            for (String playerId : players) {
-                sendTo(playerId, message);
-            }
-        }
-
         void addAnswer(String playerId, String answer) {
             playerAnswers.get(playerId).add(answer);
+        }
+
+        String awaitAnswer(String playerId) {
+            while (playerAnswers.get(playerId).isEmpty()) {
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException ignored) {
+                }
+            }
+            return playerAnswers.get(playerId).poll();
         }
 
         String pollMessage(String playerId) {
@@ -86,11 +90,17 @@ public class HttpServerGame {
         public void handle(HttpExchange exchange) throws IOException {
             for (Session session : sessions.values()) {
                 if (!session.full && session.players.size() == 1) {
-                    String playerId = UUID.randomUUID().toString();
-                    session.addPlayer(playerId);
+                    String playerId1 = session.players.get(0);
+                    String playerId2 = UUID.randomUUID().toString();
+                    session.addPlayer(playerId2);
                     session.full = true;
-                    session.sendToAll("Both players connected!\nWho will start? (1 or 2):\n\n");
-                    respond(exchange, session.sessionId + "," + playerId);
+
+                    HttpPlayer p1 = new HttpPlayer(1, "Player 1", playerId1, session);
+                    HttpPlayer p2 = new HttpPlayer(2, "Player 2", playerId2, session);
+
+                    new Thread(() -> new Game(p1, p2).start()).start();
+
+                    respond(exchange, session.sessionId + "," + playerId2);
                     return;
                 }
             }
@@ -132,7 +142,6 @@ public class HttpServerGame {
             Session session = sessions.get(sessionId);
             if (session != null) {
                 session.addAnswer(playerId, input);
-                session.sendToAll("You wrote: " + input + "\n\n");
             }
             respond(exchange, "OK");
         }

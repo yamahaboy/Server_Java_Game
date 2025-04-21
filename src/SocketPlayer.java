@@ -53,7 +53,13 @@ public class SocketPlayer extends Player {
         out.println(message);
     }
 
-    public String readLine() throws IOException {
-        return in.readLine();
+    @Override
+    public String readLine() {
+        try {
+            return in.readLine();
+        } catch (IOException e) {
+            return null;
+        }
     }
+
 }
