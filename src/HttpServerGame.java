@@ -2,38 +2,52 @@
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
-import java.io.*;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.util.*;
+import java.util.concurrent.Executors;
 
 public class HttpServerGame {
 
     private static final List<Session> sessions = new ArrayList<>();
 
     public static void main(String[] args) throws IOException {
-        int port = Integer.parseInt(System.getenv().getOrDefault("PORT", "8080"));
+        int port = Integer.parseInt(System.getenv("PORT"));
+
         HttpServer server = HttpServer.create(new InetSocketAddress("0.0.0.0", port), 0);
-        server.createContext("/", new SimpleHandler("🟢 Java Game Server is running!"));
         server.createContext("/create", new CreateHandler());
         server.createContext("/join", new JoinHandler());
         server.createContext("/next", new NextHandler());
         server.createContext("/answer", new AnswerHandler());
-        server.setExecutor(null);
+        server.setExecutor(Executors.newCachedThreadPool());
         server.start();
+
         System.out.println("✅ HTTP server started on port " + port);
     }
 
-    static class SimpleHandler implements HttpHandler {
+    static class Session {
 
-        private final String message;
+        Queue<String> messages = new LinkedList<>();
+        final Map<Integer, Queue<String>> playerAnswers = new HashMap<>();
+        boolean full = false;
 
-        public SimpleHandler(String message) {
-            this.message = message;
+        void sendToAll(String msg) {
+            messages.add(msg);
         }
 
-        @Override
-        public void handle(HttpExchange exchange) throws IOException {
-            respond(exchange, message);
+        void addAnswer(int playerIndex, String msg) {
+            playerAnswers.computeIfAbsent(playerIndex, k -> new LinkedList<>()).add(msg);
+        }
+
+        String awaitAnswer(int playerIndex) {
+            while (playerAnswers.getOrDefault(playerIndex, new LinkedList<>()).isEmpty()) {
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException ignored) {
+                }
+            }
+            return playerAnswers.get(playerIndex).poll();
         }
     }
 
@@ -43,8 +57,8 @@ public class HttpServerGame {
         public void handle(HttpExchange exchange) throws IOException {
             Session session = new Session();
             sessions.add(session);
-            session.messages.add("Waiting for second player...\n");
-            respond(exchange, "Game created\n");
+            session.messages.add("Game created\nWaiting for second player...\n");
+            respond(exchange, "Game created");
         }
     }
 
@@ -53,14 +67,15 @@ public class HttpServerGame {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
             for (Session session : sessions) {
-                if (session.players.size() == 1) {
-                    session.players.add(new PlayerConnection());
-                    session.messages.add("Both players connected!\nWho will start? (1 or 2):\n");
-                    respond(exchange, "Joined game\n");
+                if (!session.full) {
+                    session.full = true;
+                    session.sendToAll("Both players connected!\n");
+                    session.sendToAll("Who will start? (1 or 2):\n");
+                    respond(exchange, "Joined game");
                     return;
                 }
             }
-            respond(exchange, "No game available. Please create one first.\n");
+            respond(exchange, "No available games");
         }
     }
 
@@ -70,12 +85,11 @@ public class HttpServerGame {
         public void handle(HttpExchange exchange) throws IOException {
             for (Session session : sessions) {
                 if (!session.messages.isEmpty()) {
-                    String next = session.messages.remove();
-                    respond(exchange, next);
+                    respond(exchange, session.messages.poll());
                     return;
                 }
             }
-            respond(exchange, "\n");
+            respond(exchange, "");
         }
     }
 
@@ -83,27 +97,22 @@ public class HttpServerGame {
 
         @Override
         public void handle(HttpExchange exchange) throws IOException {
-            String input = new String(exchange.getRequestBody().readAllBytes()).trim();
+            Scanner scanner = new Scanner(exchange.getRequestBody()).useDelimiter("\\A");
+            String input = scanner.hasNext() ? scanner.next() : "";
+
             for (Session session : sessions) {
-                session.messages.add("You wrote: " + input + "\n");
-                respond(exchange, "OK\n");
-                return;
+                if (session.full) {
+                    // Временное предположение — всегда отвечает игрок 1
+                    session.addAnswer(1, input);
+                    session.sendToAll("You wrote: " + input + "\n");
+                    break;
+                }
             }
-            respond(exchange, "No session\n");
+            respond(exchange, "OK");
         }
     }
 
-    static class Session {
-
-        List<PlayerConnection> players = new ArrayList<>(List.of(new PlayerConnection()));
-        Queue<String> messages = new LinkedList<>();
-    }
-
-    static class PlayerConnection {
-        // For future: id or state if needed
-    }
-
-    static void respond(HttpExchange exchange, String response) throws IOException {
+    private static void respond(HttpExchange exchange, String response) throws IOException {
         exchange.sendResponseHeaders(200, response.getBytes().length);
         try (OutputStream os = exchange.getResponseBody()) {
             os.write(response.getBytes());
