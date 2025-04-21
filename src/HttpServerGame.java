@@ -123,15 +123,18 @@ public class HttpServerGame {
             Map<String, String> query = parseQuery(exchange);
             String sessionId = query.get("sessionId");
             String playerId = query.get("playerId");
+
             String input;
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(exchange.getRequestBody()))) {
                 input = reader.readLine();
             }
+
             Session session = sessions.get(sessionId);
             if (session != null) {
                 session.addAnswer(playerId, input);
                 session.sendToAll("You wrote: " + input + "\n\n");
             }
+
             respond(exchange, "OK");
         }
     }
