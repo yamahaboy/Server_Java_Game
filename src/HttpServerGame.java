@@ -48,6 +48,12 @@ public class HttpServerGame {
             playerMessages.get(playerId).add(message);
         }
 
+        void sendToAll(String message) {
+            for (String playerId : players) {
+                sendTo(playerId, message);
+            }
+        }
+
         void addAnswer(String playerId, String answer) {
             playerAnswers.get(playerId).add(answer);
         }
@@ -79,7 +85,6 @@ public class HttpServerGame {
             session.sendTo(playerId, "Game created\nWaiting for second player...\n\n");
 
             sessions.put(sessionId, session);
-
             respond(exchange, sessionId + "," + playerId);
         }
     }
@@ -98,8 +103,9 @@ public class HttpServerGame {
                     HttpPlayer p1 = new HttpPlayer(1, "Player 1", playerId1, session);
                     HttpPlayer p2 = new HttpPlayer(2, "Player 2", playerId2, session);
 
-                    new Thread(() -> new Game(p1, p2).start()).start();
+                    session.sendToAll("Both players connected!\nGame is starting...\n\n");
 
+                    new Thread(() -> new Game(p1, p2).start()).start();
                     respond(exchange, session.sessionId + "," + playerId2);
                     return;
                 }

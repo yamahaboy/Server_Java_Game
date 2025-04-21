@@ -24,15 +24,11 @@ public class Round {
             resultMessage = "FAIL! Correct number was: " + secretNumber;
         }
 
-        if (setter instanceof SocketPlayer sp1) {
-            sp1.sendMessage(resultMessage);
-            sp1.sendMessage("");
-        }
+        setter.sendMessage(resultMessage);
+        setter.sendMessage("");
 
-        if (guesser instanceof SocketPlayer sp2) {
-            sp2.sendMessage(resultMessage);
-            sp2.sendMessage("");
-        }
+        guesser.sendMessage(resultMessage);
+        guesser.sendMessage("");
 
         System.out.println(resultMessage);
     }
