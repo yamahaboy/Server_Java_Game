@@ -36,18 +36,22 @@ public class Client {
         String playerId = data[1].trim();
 
         while (true) {
+            StringBuilder fullResponse = new StringBuilder();
             String response;
             do {
                 response = get("/next?sessionId=" + encode(sessionId) + "&playerId=" + encode(playerId));
                 if (!response.trim().isEmpty()) {
                     System.out.print(response);
+                    fullResponse.append(response);
                 }
                 safeSleep(100);
             } while (!response.trim().isEmpty());
 
-            if (response.contains("input") || response.contains("choose")
-                    || response.contains("Enter your choice") || response.contains("One more time?")
-                    || response.contains("Who will start?")) {
+            String allText = fullResponse.toString();
+
+            if (allText.contains("input") || allText.contains("choose")
+                    || allText.contains("Enter your choice") || allText.contains("One more time?")
+                    || allText.contains("Who will start?")) {
                 System.out.print("> ");
                 String userInput = scanner.nextLine();
                 post("/answer?sessionId=" + encode(sessionId) + "&playerId=" + encode(playerId), userInput);
