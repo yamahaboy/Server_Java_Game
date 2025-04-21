@@ -1,41 +1,42 @@
+
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Scanner;
 
 public class Client {
+
     private static final String BASE_URL = "https://java-tcp-game-production.up.railway.app";
 
     public static void main(String[] args) throws IOException {
         Scanner scanner = new Scanner(System.in);
 
-        System.out.println("Choose action:");
-        System.out.println("1 - Create game (Player 1)");
-        System.out.println("2 - Join game (Player 2)");
+        System.out.println("Choose:");
+        System.out.println("1 - Create game");
+        System.out.println("2 - Join game");
         System.out.print("> ");
         int action = Integer.parseInt(scanner.nextLine());
 
-        String gameId = null;
-
         if (action == 1) {
-            gameId = post("/start", "").replace("Game created with ID: ", "");
-            System.out.println("Game ID: " + gameId);
-            System.out.print("Enter secret number: ");
-            String secret = scanner.nextLine();
-            post("/input-number?gameId=" + gameId, secret);
-            System.out.println("Waiting for player 2...");
-        } else if (action == 2) {
-            System.out.print("Enter game ID to join: ");
-            gameId = scanner.nextLine();
-            post("/join?gameId=" + gameId, "");
-            System.out.print("Enter your guess: ");
-            String guess = scanner.nextLine();
-            post("/guess?gameId=" + gameId, guess);
+            System.out.println(post("/create", ""));
+        } else {
+            System.out.println(post("/join", ""));
         }
 
-        System.out.println("Checking result...");
-        String result = get("/result?gameId=" + gameId);
-        System.out.println("\nRESULT: " + result);
+        while (true) {
+            String response = get("/next");
+            System.out.print(response);
+
+            if (response.contains("input") || response.contains("choose")
+                    || response.contains("Enter your choice")
+                    || response.contains("One more time?")
+                    || response.contains("Who will start?")) {
+
+                System.out.print("> ");
+                String userInput = scanner.nextLine();
+                post("/answer", userInput);
+            }
+        }
     }
 
     private static String post(String path, String body) throws IOException {
@@ -50,7 +51,7 @@ public class Client {
         StringBuilder response = new StringBuilder();
         String line;
         while ((line = in.readLine()) != null) {
-            response.append(line);
+            response.append(line).append("\n");
         }
         return response.toString();
     }
@@ -63,7 +64,7 @@ public class Client {
         StringBuilder response = new StringBuilder();
         String line;
         while ((line = in.readLine()) != null) {
-            response.append(line);
+            response.append(line).append("\n");
         }
         return response.toString();
     }
