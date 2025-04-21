@@ -5,7 +5,9 @@ import com.sun.net.httpserver.HttpServer;
 import java.io.*;
 import java.net.InetSocketAddress;
 import java.util.*;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
 
 public class HttpServerGame {
 
@@ -26,12 +28,12 @@ public class HttpServerGame {
         System.out.println("✅ HTTP server started on port " + port);
     }
 
-    static class Session {
+    public static class Session {
 
         String sessionId;
         boolean full = false;
         Map<String, Queue<String>> playerMessages = new HashMap<>();
-        Map<String, Queue<String>> playerAnswers = new HashMap<>();
+        Map<String, BlockingQueue<String>> playerAnswers = new HashMap<>();
         List<String> players = new ArrayList<>();
 
         Session(String id) {
@@ -41,7 +43,7 @@ public class HttpServerGame {
         void addPlayer(String playerId) {
             players.add(playerId);
             playerMessages.put(playerId, new LinkedList<>());
-            playerAnswers.put(playerId, new LinkedList<>());
+            playerAnswers.put(playerId, new LinkedBlockingQueue<>());
         }
 
         void sendTo(String playerId, String message) {
@@ -55,17 +57,16 @@ public class HttpServerGame {
         }
 
         void addAnswer(String playerId, String answer) {
-            playerAnswers.get(playerId).add(answer);
+            playerAnswers.get(playerId).offer(answer);
         }
 
         String awaitAnswer(String playerId) {
-            while (playerAnswers.get(playerId).isEmpty()) {
-                try {
-                    Thread.sleep(100);
-                } catch (InterruptedException ignored) {
-                }
+            try {
+                return playerAnswers.get(playerId).take();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return null;
             }
-            return playerAnswers.get(playerId).poll();
         }
 
         String pollMessage(String playerId) {

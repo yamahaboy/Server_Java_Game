@@ -46,10 +46,12 @@ public class HttpPlayer extends Player {
         }
     }
 
+    @Override
     public void sendMessage(String message) {
         session.sendTo(playerId, message);
     }
-
+    
+    @Override 
     public String readLine() {
         return session.awaitAnswer(playerId);
     }

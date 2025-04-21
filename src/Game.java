@@ -29,9 +29,7 @@ public class Game {
         player1.sendMessage("Who will start? (1 or 2):");
         player1.sendMessage("");
 
-        int input = player1 instanceof HttpPlayer
-                ? ((HttpPlayer) player1).readInt()
-                : ((SocketPlayer) player1).readInt();
+        int input = ((HttpPlayer) player1).readInt();
 
         Player chosen = (input == 1) ? player1 : player2;
 
@@ -48,15 +46,8 @@ public class Game {
         player1.sendMessage("One more time? (yes/no):");
         player1.sendMessage("");
 
-        String response = player1 instanceof HttpPlayer
-                ? ((HttpPlayer) player1).readLine()
-                : safeReadSocketLine();
-
+        String response = player1.readLine();
         return response != null && response.equalsIgnoreCase("yes");
-    }
-
-    private String safeReadSocketLine() {
-        return player1.readLine();
     }
 
     private void endGame() {
