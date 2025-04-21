@@ -1,6 +1,7 @@
 
 import java.io.*;
 import java.net.HttpURLConnection;
+import java.net.URI;
 import java.net.URL;
 import java.util.Scanner;
 
@@ -8,6 +9,7 @@ public class Client {
 
     private static final String BASE_URL = "https://java-tcp-game-production.up.railway.app";
 
+    @SuppressWarnings("resource")
     public static void main(String[] args) throws IOException {
         Scanner scanner = new Scanner(System.in);
 
@@ -25,6 +27,12 @@ public class Client {
 
         while (true) {
             String response = get("/next");
+
+            if (response.trim().isEmpty()) {
+                safeSleep(1000);
+                continue;
+            }
+
             System.out.print(response);
 
             if (response.contains("input") || response.contains("choose")
@@ -40,7 +48,8 @@ public class Client {
     }
 
     private static String post(String path, String body) throws IOException {
-        URL url = new URL(BASE_URL + path);
+        URI uri = URI.create(BASE_URL + path);
+        URL url = uri.toURL();
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("POST");
         conn.setDoOutput(true);
@@ -57,7 +66,8 @@ public class Client {
     }
 
     private static String get(String path) throws IOException {
-        URL url = new URL(BASE_URL + path);
+        URI uri = URI.create(BASE_URL + path);
+        URL url = uri.toURL();
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("GET");
         BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
@@ -67,5 +77,13 @@ public class Client {
             response.append(line).append("\n");
         }
         return response.toString();
+    }
+
+    private static void safeSleep(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 }
