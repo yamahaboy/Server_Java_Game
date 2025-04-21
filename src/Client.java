@@ -36,14 +36,14 @@ public class Client {
         String playerId = data[1].trim();
 
         while (true) {
-            String response = get("/next?sessionId=" + encode(sessionId) + "&playerId=" + encode(playerId));
-
-            if (response.trim().isEmpty()) {
-                safeSleep(1000);
-                continue;
-            }
-
-            System.out.print(response);
+            String response;
+            do {
+                response = get("/next?sessionId=" + encode(sessionId) + "&playerId=" + encode(playerId));
+                if (!response.trim().isEmpty()) {
+                    System.out.print(response);
+                }
+                safeSleep(100);
+            } while (!response.trim().isEmpty());
 
             if (response.contains("input") || response.contains("choose")
                     || response.contains("Enter your choice") || response.contains("One more time?")
