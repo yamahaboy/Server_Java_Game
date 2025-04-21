@@ -22,6 +22,8 @@ public class HttpPlayer extends Player {
         session.sendTo(playerId, "Here are the numbers to choose from:\n");
         System.out.println("[" + getName() + "] options = " + java.util.Arrays.toString(options));
 
+        System.out.println("[SERVER] options = " + options);
+
         for (int i = 0; i < options.length; i++) {
             session.sendTo(playerId, (i + 1) + ". " + options[i] + "\n");
         }
