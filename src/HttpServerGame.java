@@ -154,14 +154,6 @@ public class HttpServerGame {
         }
     }
 
-    private static void respond(HttpExchange exchange, String response) throws IOException {
-        byte[] bytes = response.getBytes();
-        exchange.sendResponseHeaders(200, bytes.length);
-        try (OutputStream os = exchange.getResponseBody()) {
-            os.write(bytes);
-        }
-    }
-
     private static Map<String, String> parseQuery(HttpExchange exchange) {
         String[] parts = exchange.getRequestURI().getQuery().split("&");
         Map<String, String> map = new HashMap<>();
@@ -170,5 +162,17 @@ public class HttpServerGame {
             map.put(kv[0], kv[1]);
         }
         return map;
+    }
+
+    private static void respond(HttpExchange exchange, String response) throws IOException {
+        exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
+        exchange.getResponseHeaders().add("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+        exchange.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type");
+
+        byte[] bytes = response.getBytes();
+        exchange.sendResponseHeaders(200, bytes.length);
+        try (OutputStream os = exchange.getResponseBody()) {
+            os.write(bytes);
+        }
     }
 }
